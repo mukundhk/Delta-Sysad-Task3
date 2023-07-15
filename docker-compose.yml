@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  # Database
+  db:
+    build: ./db
+    volumes:
+      - db_data:/var/lib/mysql
+      - "./db/schema.sql:/docker-entrypoint-initdb.d/1.sql"
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_PASSWORD: password
+    networks:
+      - mynetwork
+    
+
+  # server
+  server:
+    depends_on:
+      - db
+    build: ./server/
+    volumes:
+      - fileserverdata:/data
+    ports:
+      - "9999:9999"
+    restart: always
+    networks:
+      - mynetwork
+    links: 
+      - db
+
+
+volumes:
+  db_data:
+    driver: local
+  fileserverdata:
+  driver: local
+    
+
+networks:
+  mynetwork:
+    driver: bridge
