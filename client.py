@@ -9,9 +9,11 @@ def start_client():
     client.connect((SERVER_HOSTNAME, SERVER_PORT))
 
     while True:
+
         try:
             data_from_server = client.recv(1024).decode()
             cmd, msg = data_from_server.split(":")
+
 
             if cmd == "DISCONNECTED":
                 print(f"[SERVER]: {msg}")
@@ -29,9 +31,22 @@ def start_client():
             
                 
             opt = input("> ").strip().lower()
-            print(opt)
 
-            if opt == "upload":
+            if opt == "help":
+                client.send(opt.encode())
+
+            elif opt == "logout":
+                client.send(opt.encode())
+                break
+
+            elif opt == "list":
+                client.send(opt.encode())
+
+            elif opt == "delete":
+                filename = input("Enter path: ")
+                client.send(f"{opt}:{filename}".encode())
+
+            elif opt == "upload":
                 path = input("Enter full path: ")
                 if os.path.isfile(path):
                     with open(f"{path}", "r") as f:
@@ -43,30 +58,21 @@ def start_client():
                     print("File doesnt exist")
                     send_data="FILE_DOESNT_EXIST"
                     client.send(send_data.encode())
-
+                
             elif opt == "download" :
                 filename = input("Enter filename: ")
                 client.send(f"{opt}:{filename}".encode())
-                server_data = client.recv(1024).decode()
-                server_data = server_data.split(":")
-                filename = server_data[0]
+                data = client.recv(1024).decode()
+                data = data.split(":")
+                filename = data[0]
                 
                 if filename == "File not found." :
                     print(filename)
                 else :
-                    text = server_data[1]
+                    text = data[1]
                     with open(filename, "w") as f:
                         f.write(text)
-                    print(f"{filename} downloaded")
-
-            elif opt == "delete":
-                filename = input("Enter path: ")
-                client.send(f"{opt}:{filename}".encode())
-
-            elif opt == "logout":
-                client.send(opt.encode())
-                break
-                     
+                    print(f"{filename} downloaded")         
             else:
                 client.send(opt.encode())
         except KeyboardInterrupt:
