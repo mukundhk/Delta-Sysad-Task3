@@ -3,33 +3,33 @@ import socket
 import threading                                                                    
 import zipfile                                                                      
 import shutil                                                                       
-# import mysql.connector as mysql                                                                     
+import mysql.connector as mysql                                                                     
 
 
 SERVER_HOST = socket.gethostbyname(socket.gethostname())                                     
 SERVER_PORT = 9999
 
-# def verify_user(username, password):                                    
-#     db = mysql.connect(
-#         host="db",
-#         database="mydb",
-#         user="root",
-#         password="password",
-#         port="3306"
-#     )                                                                      
+def verify_user(username, password):                                    
+    db = mysql.connect(
+        host="db",
+        database="mydb",
+        user="root",
+        password="password",
+        port="3306"
+    )                                                                      
 
-#     cursor = db.cursor()
-#     cursor.execute("SELECT count(*) FROM users WHERE username = %s AND password = %s",(username, password))
+    cursor = db.cursor()
+    cursor.execute("SELECT count(*) FROM users WHERE username = %s AND password = %s",(username, password))
     
-#     output = cursor.fetchall() 
+    output = cursor.fetchall() 
                                                          
-#     cursor.close()
-#     db.close()
+    cursor.close()
+    db.close()
 
-#     if len(output)==1:
-#         return True
-#     else:
-#         return False
+    if len(output)==1:
+        return True
+    else:
+        return False
 
 def compress(file_path):                                                       
     file_w_ext = file_path.split('/')[-1]
@@ -69,8 +69,7 @@ def handle_client(client_socket, client_address):
     creds=creds.split(":")
     username , password = creds[0] , creds[1]
 
-    # if verify_user(username, password):
-    if True:
+    if verify_user(username, password):
         client_socket.send(f"OK:Welcome {username}.Type HELP to read about the list of avaliable commands".encode())
         try:
             os.mkdir(f"/data/{username}")
