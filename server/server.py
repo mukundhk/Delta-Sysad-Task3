@@ -1,42 +1,13 @@
 import os                                                                           
 import socket                                                                       
-import threading
-import mysql.connector as mysql                                                                 
+import threading                                                                    
 import zipfile                                                                      
-import shutil                                                                      
+import shutil                                                                       
+import mysql.connector as mysql                                                                     
+
 
 SERVER_HOST = socket.gethostbyname(socket.gethostname())                                     
 SERVER_PORT = 9999
-
-def compress(file_path):                                                       
-    file_w_ext = file_path.split('/')[-1]
-    filename = file_w_ext.split(".")[0]
-    compressed_file = filename + '.zip'                                              
-
-    with zipfile.ZipFile(compressed_file, 'w') as f:
-        f.write(file_path, file_w_ext, compress_type = zipfile.ZIP_DEFLATED)                                             
-    
-    new_file_path = os.path.join(os.path.dirname(file_path), compressed_file)       
-    shutil.move(compressed_file, new_file_path)                                       
-
-    return compressed_file
-
-def decompress(file_path):
-    
-    with zipfile.ZipFile(file_path, 'r') as compressed_file:
-        extracted_file = compressed_file.namelist()[0]
-        compressed_file.extractall(os.path.dirname(file_path))
-    
-    return extracted_file
-
-def find_file(file_name,USER_DIR):                                                           
-    file_path = os.path.join(USER_DIR, file_name)
-
-    if os.path.isfile(file_path):               
-        return file_path
-    
-    else:
-        return None
 
 def verify_user(username, password):                                    
     db = mysql.connect(
@@ -60,6 +31,36 @@ def verify_user(username, password):
     else:
         return False
 
+def compress(file_path):                                                       
+    file_w_ext = file_path.split('/')[-1]
+    filename = file_w_ext.split(".")[0]
+    compressed_file = filename + '.zip'                                              
+
+    with zipfile.ZipFile(compressed_file, 'w') as f:
+        f.write(file_path, file_w_ext, compress_type = zipfile.ZIP_DEFLATED)                                             
+    
+    new_file_path = os.path.join(os.path.dirname(file_path), compressed_file)       
+    shutil.move(compressed_file, new_file_path)                                       
+
+    return compressed_file
+
+def find_file(file_name,USER_DIR):                                                           
+    file_path = os.path.join(USER_DIR, file_name)
+
+    if os.path.isfile(file_path):               
+        return file_path
+    
+    else:
+        return None
+
+def decompress_file(file_path):
+    
+    with zipfile.ZipFile(file_path, 'r') as compressed_file:
+        extracted_file = compressed_file.namelist()[0]
+        compressed_file.extractall(os.path.dirname(file_path))
+    
+    return extracted_file
+
 def handle_client(client_socket, client_address):
     print(f"[NEW CONNECTION] {client_address} connected.")
     client_socket.send("LOGIN:Welcome to the File Server.".encode())
@@ -70,21 +71,25 @@ def handle_client(client_socket, client_address):
 
     if verify_user(username, password):
         client_socket.send(f"OK:Welcome {username}.Type HELP to read about the list of avaliable commands".encode())
+        try:
+            os.mkdir(f"/data/{username}")
+            USER_DIR = f"/data/{username}"
+        except FileExistsError:
+            pass
 
-        USER_DIR = f"/data/{username}" 
         
         while True:
-            client_data = client_socket.recv(1024).decode()
-            client_data = client_data.split(":")
-            opt = client_data[0]
+            data = client_socket.recv(1024).decode()
+            data = data.split(":")
+            opt = data[0]
 
             if opt == "help":
-                send_data = '''OK:DOWNLOAD - Downloads a file from the server.
-UPLOAD - Upload a file to the server.
-LIST - List all the files from the server.
-LOGOUT - Disconnect from the server.
-HELP - List all the commands.
-DELETE - Delete a file from the server.'''
+                send_data = '''OK:DOWNLOAD <filename> Downloads a file from the server.
+UPLOAD <path>- Upload a file to the server.
+LIST- List all the files from the server.
+DELETE <filename>- Delete a file from the server.
+LOGOUT- Disconnect from the server.
+HELP- List all the commands.'''
 
                 client_socket.send(send_data.encode())
             
@@ -104,7 +109,7 @@ DELETE - Delete a file from the server.'''
             elif opt == "delete":
                 files = os.listdir(USER_DIR)
                 send_data = "OK:"
-                filename = client_data[1]
+                filename = data[1]
 
                 if len(files) == 0:
                     send_data += "The server directory is empty"
@@ -118,7 +123,7 @@ DELETE - Delete a file from the server.'''
                 client_socket.send(send_data.encode())
             
             elif opt == "upload":
-                name, text = client_data[1], client_data[2]
+                name, text = data[1], data[2]
                 filepath = os.path.join(USER_DIR, name)
                 with open(filepath, "w") as f:
                     f.write(text)
@@ -130,7 +135,7 @@ DELETE - Delete a file from the server.'''
                 client_socket.send(send_data.encode())
             
             elif opt == "download" :
-                name = client_data[1]
+                name = data[1]
                 file_path=find_file(name, USER_DIR)
                 
                 if file_path is None :
@@ -138,7 +143,7 @@ DELETE - Delete a file from the server.'''
                     client_socket.send(send_data.encode())
 
                 else:
-                    decompressed_file=decompress(file_path)
+                    decompressed_file=decompress_file(file_path)
                     with open(f"{USER_DIR}/{decompressed_file}", "r") as f:
                         data = f.read()
                     send_data = f"{decompressed_file}:{data}"
@@ -151,9 +156,10 @@ DELETE - Delete a file from the server.'''
                 client_socket.send(send_data.encode())
             
             elif opt == "":
-                send_data="OK:Invalid command. Type HELP to view all commands"
-                client_socket.send(send_data.encode())
+                data="OK:Invalid command. Type HELP to view all commands"
+                client_socket.send(data.encode())
                 
+
 
         print(f"[DISCONNECTED] {client_address} disconnected\n")
         client_socket.close()
