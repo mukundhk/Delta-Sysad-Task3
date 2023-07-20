@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # Database
   db:
-    build: ./db
+    image : mysql:5.7
     volumes:
       - db_data:/var/lib/mysql
       - "./db/schema.sql:/docker-entrypoint-initdb.d/1.sql"
@@ -11,8 +11,8 @@ services:
     ports:
       - "3306:3306"
     environment:
+      MYSQL_DATABASE: mydb
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_PASSWORD: password
     networks:
       - mynetwork
     
@@ -37,7 +37,7 @@ volumes:
   db_data:
     driver: local
   fileserverdata:
-  driver: local
+    driver: local
     
 
 networks:

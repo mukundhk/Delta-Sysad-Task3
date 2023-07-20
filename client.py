@@ -1,7 +1,7 @@
 import os
 import socket
 
-SERVER_HOSTNAME = socket.gethostbyname(socket.gethostname())
+SERVER_HOSTNAME = "172.19.0.3"
 SERVER_PORT = 9999
 
 def start_client():
@@ -34,31 +34,7 @@ def start_client():
 
             if opt == "help":
                 client.send(opt.encode())
-
-            elif opt == "logout":
-                client.send(opt.encode())
-                break
-
-            elif opt == "list":
-                client.send(opt.encode())
-
-            elif opt == "delete":
-                filename = input("Enter path: ")
-                client.send(f"{opt}:{filename}".encode())
-
-            elif opt == "upload":
-                path = input("Enter full path: ")
-                if os.path.isfile(path):
-                    with open(f"{path}", "r") as f:
-                        text = f.read()
-                    filename = path.split("/")[-1]
-                    send_data = f"{opt}:{filename}:{text}"
-                    client.send(send_data.encode())
-                else :
-                    print("File doesnt exist")
-                    send_data="FILE_DOESNT_EXIST"
-                    client.send(send_data.encode())
-                
+            
             elif opt == "download" :
                 filename = input("Enter filename: ")
                 client.send(f"{opt}:{filename}".encode())
@@ -72,9 +48,36 @@ def start_client():
                     text = data[1]
                     with open(filename, "w") as f:
                         f.write(text)
-                    print(f"{filename} downloaded")         
+                    print(f"{filename} downloaded")
+
+            elif opt == "upload":
+                path = input("Enter full path: ")
+                if os.path.isfile(path):
+                    with open(f"{path}", "r") as f:
+                        text = f.read()
+                    filename = path.split("/")[-1]
+                    send_data = f"{opt}:{filename}:{text}"
+                    client.send(send_data.encode())
+                else :
+                    print("File doesnt exist")
+                    send_data="FILE_DOESNT_EXIST"
+                    client.send(send_data.encode())       
+
+            elif opt == "logout":
+                client.send(opt.encode())
+                break
+
+            elif opt == "list":
+                client.send(opt.encode())
+
+            elif opt == "delete":
+                filename = input("Enter path: ")
+                client.send(f"{opt}:{filename}".encode())
+            
             else:
                 client.send(opt.encode())
+                
+            
         except KeyboardInterrupt:
             break
 

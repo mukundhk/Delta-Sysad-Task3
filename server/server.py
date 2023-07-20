@@ -21,12 +21,12 @@ def verify_user(username, password):
     cursor = db.cursor()
     cursor.execute("SELECT count(*) FROM users WHERE username = %s AND password = %s",(username, password))
     
-    output = cursor.fetchall() 
+    output = cursor.fetchone()
                                                          
     cursor.close()
     db.close()
 
-    if len(output)==1:
+    if output[0]==1:
         return True
     else:
         return False
@@ -53,7 +53,7 @@ def find_file(file_name,USER_DIR):
     else:
         return None
 
-def decompress(file_path):
+def decompress_file(file_path):
     
     with zipfile.ZipFile(file_path, 'r') as compressed_file:
         extracted_file = compressed_file.namelist()[0]
@@ -73,9 +73,9 @@ def handle_client(client_socket, client_address):
         client_socket.send(f"OK:Welcome {username}.Type HELP to read about the list of avaliable commands".encode())
         try:
             os.mkdir(f"/data/{username}")
-            USER_DIR = f"/data/{username}"
         except FileExistsError:
             pass
+        USER_DIR = f"/data/{username}"
 
         
         while True:
@@ -93,8 +93,34 @@ DELETE - Delete a file from the server.'''
 
                 client_socket.send(send_data.encode())
             
-            elif opt == "logout":
-                break
+            elif opt == "download" :
+                name = client_data[1]
+                file_path=find_file(name, USER_DIR)
+                
+                if file_path is None :
+                    send_data = "File not found."
+                    client_socket.send(send_data.encode())
+
+                else:
+                    decompressed_file=decompress_file(file_path)
+                    with open(f"{USER_DIR}/{decompressed_file}", "r") as f:
+                        data = f.read()
+                    send_data = f"{decompressed_file}:{data}"
+                    client_socket.send(send_data.encode())
+                    os.system(f"rm {USER_DIR}/{decompressed_file}")
+                    client_socket.send("OK:".encode())
+            
+            elif opt == "upload":
+                name, text = client_data[1], client_data[2]
+                filepath = os.path.join(USER_DIR, name)
+                with open(filepath, "w") as f:
+                    f.write(text)
+                compressed_file_name=compress(filepath)
+                print(f"New file {compressed_file_name} created\n")    
+                os.system(f"rm {filepath}")
+
+                send_data = "OK:File uploaded successfully."
+                client_socket.send(send_data.encode())
             
             elif opt == "list":
                 files = os.listdir(USER_DIR)
@@ -105,6 +131,9 @@ DELETE - Delete a file from the server.'''
                 else:
                     send_data += "\n".join(f for f in files)
                 client_socket.send(send_data.encode())
+            
+            elif opt == "logout":
+                break
 
             elif opt == "delete":
                 files = os.listdir(USER_DIR)
@@ -121,35 +150,6 @@ DELETE - Delete a file from the server.'''
                         send_data += "File not found."
 
                 client_socket.send(send_data.encode())
-            
-            elif opt == "upload":
-                name, text = client_data[1], client_data[2]
-                filepath = os.path.join(USER_DIR, name)
-                with open(filepath, "w") as f:
-                    f.write(text)
-                compressed_file_name=compress(filepath)
-                print(f"New file {compressed_file_name} created\n")    
-                os.system(f"rm {filepath}")
-
-                send_data = "OK:File uploaded successfully."
-                client_socket.send(send_data.encode())
-            
-            elif opt == "download" :
-                name = client_data[1]
-                file_path=find_file(name, USER_DIR)
-                
-                if file_path is None :
-                    send_data = "File not found."
-                    client_socket.send(send_data.encode())
-
-                else:
-                    decompressed_file=decompress(file_path)
-                    with open(f"{USER_DIR}/{decompressed_file}", "r") as f:
-                        data = f.read()
-                    send_data = f"{decompressed_file}:{data}"
-                    client_socket.send(send_data.encode())
-                    os.system(f"rm {USER_DIR}/{decompressed_file}")
-                    client_socket.send("OK:".encode())
 
             elif opt == "FILE_DOESNT_EXIST" :
                 send_data="OK:"
@@ -159,22 +159,16 @@ DELETE - Delete a file from the server.'''
                 send_data="OK:Invalid command. Type HELP to view all commands"
                 client_socket.send(send_data.encode())
                 
-
-
+                
         print(f"[DISCONNECTED] {client_address} disconnected\n")
         client_socket.close()
     
     else :
-        client_socket.send("OK:Invalid Username or Password. Please enter valid credentials.")
+        client_socket.send("DISCONNECTED:Wrong credentials".encode())
         
 
 def start_server():
     print("[STARTING] Server is starting")
-    
-    try:
-        os.mkdir("/data")
-    except FileExistsError:
-        pass
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
